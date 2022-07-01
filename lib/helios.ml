@@ -34,6 +34,25 @@ let write_string fd str =
 
 let string_body str = fun fd -> write_string fd str
 
+(* TODO: Write bindings for 'sendfile' instead of read and write *)
+let file_body file_path = fun sock_fd ->
+  let buffer_capacity = 4096 in
+  let buffer = Bytes.create buffer_capacity in
+
+  let file_fd = Unix.openfile file_path [Unix.O_RDONLY] 0 in
+
+  let rec go () = 
+    (* Stream the contents from the file to the socket *)
+    let num_read = Unix.read file_fd buffer 0 buffer_capacity in
+    if num_read > 0 then begin
+      let _ = Unix.write sock_fd buffer 0 num_read in
+      go ()
+    end
+    else
+      ()
+  in
+  go ()
+
 exception HttpParseError
 
 let bind_parse_error opt cont =
@@ -130,5 +149,33 @@ let run ?(logger = Logger.stdout) ~port handler =
     Unix.close connection
   done
   
+let split_path path = List.filter (fun x -> not (String.equal x "")) (String.split_on_char '/' path)
+
+(* TODO: Generate a more efficient decision tree ahead of time *)
+let route ~fallback spec req =
+  let path_components = split_path req.path in
+  let rec go spec = function
+    | [] -> 
+      begin match List.find_opt (function ([], _) -> true | _ -> false) spec with
+      | Some (_, cont) -> cont req
+      | None -> fallback req
+      end
+    | (path :: paths) ->
+      let as_valid_path = function 
+        | (spec_path :: spec_paths, cont) when spec_path = path -> Some (spec_paths, cont)
+        | _ -> None
+      in
+      let remaining = List.filter_map as_valid_path spec in
+      go remaining paths
+  in
+  (* Only routes that match the request method are possible *)
+  let spec = 
+    List.filter_map 
+      (fun (meth, path, cont) -> 
+        if meth = req.req_method 
+        then Some(split_path path, cont)
+        else None) spec
+  in
+  go spec path_components
 
 

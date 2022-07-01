@@ -117,38 +117,47 @@ let send_error conn err =
       write_string conn ("<h1>Internal Server Error: " ^ Printexc.to_string err ^ "</h1>\n")
       )
 
+let rec create_threads count action = 
+  match count with
+  | _ when count <= 0 -> raise (Failure "create_threads: cannot create 0 or less threads")
+  | 1 -> action 1
+  | _ -> let _ = Thread.create action count in create_threads (count - 1) action
+
 (* I don't really know what to set this to tbh*)
 let backlog = 1024
 
-let run ?(logger = Logger.stdout) ~port handler = 
+let run ?(logger = Logger.stdout) ?(capabilities = 8) ~port handler = 
   let sock = Unix.socket ~cloexec:true Unix.PF_INET Unix.SOCK_STREAM 0 in
   Unix.bind sock (Unix.ADDR_INET (Unix.inet_addr_any, port));
   Unix.listen sock backlog;
   logger.log ("Listening on *:" ^ string_of_int port);
 
-  (* TODO: Run this on multiple threads, possibly even some kind of cps-based scheduler? *)
-  while true do
-    logger.log "Accepting new requests...";
-    let connection, _ = Unix.accept sock in
-    logger.log "Connected!";
-    begin
-    try
-      let request = parse_request connection in
+  (* TODO: timeouts *)
+  create_threads capabilities begin fun id -> begin
+    while true do
+      logger.log ("[" ^ string_of_int id ^ "]: Accepting new requests...");
+      let connection, _ = Unix.accept sock in
+      logger.log ("[" ^ string_of_int id ^ "]: Connected!");
+      begin
+      try
+        let request = parse_request connection in
 
-      let response = handler request in
+        let response = handler request in
 
-      send_response connection response
-    with
-      | HttpParseError ->
-        logger.log ("HTTP PARSE ERROR");
-        send_http connection 400 "Bad Request" (fun conn -> write_string conn "\n<h1>Bad Request</h1>")
-      | err -> 
-        logger.log ("EXCEPTION: " ^ Printexc.to_string err);
-        send_error connection err
-    end;
-    Unix.close connection
-  done
-  
+        send_response connection response
+      with
+        | HttpParseError ->
+          logger.log ("[" ^ string_of_int id ^ "]: HTTP PARSE ERROR");
+          send_http connection 400 "Bad Request" (fun conn -> write_string conn "\n<h1>Bad Request</h1>")
+        | err -> 
+          logger.log ("[" ^ string_of_int id ^ "]: EXCEPTION: " ^ Printexc.to_string err);
+          send_error connection err
+      end;
+      Unix.close connection
+    done
+  end
+end
+
 let split_path path = List.filter (fun x -> not (String.equal x "")) (String.split_on_char '/' path)
 
 (* TODO: Generate a more efficient decision tree ahead of time *)

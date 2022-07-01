@@ -24,6 +24,6 @@ val string_body : string -> response_body
 
 val file_body : string -> response_body
 
-val run : ?logger:Logger.logger -> port:int -> (request -> response) -> unit
+val run : ?logger:Logger.logger -> ?capabilities:int -> port:int -> (request -> response) -> unit
 
 val route : fallback:(request -> response) -> (string * string * (request -> response)) list -> request -> response

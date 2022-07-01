@@ -1,4 +1,4 @@
 (executable
- (public_name helios)
+ (public_name helios_example)
  (name main)
  (libraries helios))

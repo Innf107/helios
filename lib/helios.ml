@@ -163,7 +163,7 @@ let run ?(logger = Logger.stdout) ?(capabilities = 8) ~port handler =
     go ()
   end
 
-(* TODO: Actually parse the url (including ? parameters) *)
+(* TODO: Actually parse the url (including ? parameters and url decoding) *)
 let split_path path = List.filter (fun x -> not (String.equal x "")) (String.split_on_char '/' path)
 
 (* TODO: Generate a more efficient decision tree ahead of time *)
@@ -205,9 +205,20 @@ type _ spec =
 
 type some_spec = Spec : 'a spec * 'a -> some_spec
 
+let rec split_lits : type a. a spec -> a spec = function
+  | Lit (str, spec) -> 
+    List.fold_right (fun x s -> Lit(x, s)) (split_path str) spec
+  | Str spec -> Str (split_lits spec)
+  | End -> End
+
 let route ~fallback specs req =
   let path_components = split_path req.path in
-  let specs = List.filter_map (fun (meth, spec) -> if meth = req.req_method then Some spec else None) specs in
+  let specs = List.filter_map (fun (meth, spec) -> 
+    if meth = req.req_method then 
+      match spec with
+      | Spec (spec, cont) -> Some (Spec (split_lits spec, cont))
+    else 
+      None) specs in
 
   let rec go specs = function
     | [] ->
@@ -229,3 +240,8 @@ let route ~fallback specs req =
       go remaining path_components
   in
   go specs path_components
+
+let (@/) x s = Lit (x, s)
+let (@@/) f x = f x
+
+let str : 'a spec -> (string -> 'a) spec = fun x -> Str x

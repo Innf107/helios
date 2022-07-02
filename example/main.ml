@@ -8,6 +8,7 @@ let on_404 req : Helios.response = {
 }
 
 let () = 
+  let open Helios in
   Helios.run ~port:5000 (Helios.route ~fallback:on_404
   [ ("GET", Spec (End, fun req -> 
     { headers = [||]
@@ -16,18 +17,25 @@ let () =
     ; content_type = "text/html"
     ; body = Helios.string_body "<h1>Hello, World!</h1>"
     }))
-  ; ("GET", Spec (Lit ("test", End), fun req -> 
+  ; ("GET", Spec ("test" @/ End, fun req -> 
     { headers = [||]    
     ; status = 200
     ; status_message = "Awesome!"
     ; content_type = "text/html"
     ; body = Helios.string_body "<h1>Teeeest!</h1>"
     }))
-  ; ("GET", Spec (Lit ("arg", Str End), fun arg req -> 
+  ; ("GET", Spec ("arg" @/ str @@/ End, fun arg req -> 
     { headers = [||]
     ; status = 200
     ; status_message = "OK"
     ; content_type = "text/html"
     ; body = Helios.string_body ("<h1>Arg: " ^ arg ^ "</h1>")
     }))
+  ; ("GET", Spec ("multi/path/with/arg" @/ str @@/ End, fun arg req ->     { headers = [||]
+    ; status = 200
+    ; status_message = "OK"
+    ; content_type = "text/html"
+    ; body = Helios.string_body ("<h1>multi path with arg: " ^ arg ^ "</h1>")
+    }))
+
   ])

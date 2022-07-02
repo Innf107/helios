@@ -11,7 +11,7 @@ type file_type = File | Dir | Nonexistant
 let dir_preview path =
   let files = Sys.readdir path in
   "<html><body><h1>" ^ path ^ "</h1><ul>"
-  ^ String.concat "\n" (List.map (fun file -> "<li><a href='" ^ path ^ "/" ^ file ^ "'>" ^ file ^ "</a></li>") (Array.to_list files))
+  ^ String.concat "\n" (List.map (fun file -> "<li><a href='" ^ file ^ "'>" ^ file ^ "</a></li>") (Array.to_list files))
   ^ "</ul></body></html>"
 
 let rec handler : Helios.request -> Helios.response = 
@@ -20,7 +20,7 @@ let rec handler : Helios.request -> Helios.response =
     if req.path = "/" then
       "index.html"
     else
-      (* Convert the absolute path (starting with a '/') to a local path.body
+      (* Convert the absolute path (starting with a '/') to a local path
          We could also do some validation here to make sure paths don't escape to parent directories *)
       "." ^ req.path
   in

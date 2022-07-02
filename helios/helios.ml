@@ -128,6 +128,7 @@ let backlog = 1024
 
 let run ?(logger = Logger.stdout) ?(capabilities = 8) ~port handler = 
   let sock = Unix.socket ~cloexec:true Unix.PF_INET Unix.SOCK_STREAM 0 in
+  Unix.setsockopt sock SO_REUSEPORT true;
   Unix.bind sock (Unix.ADDR_INET (Unix.inet_addr_any, port));
   Unix.listen sock backlog;
   logger.log ("Listening on *:" ^ string_of_int port);

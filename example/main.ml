@@ -4,7 +4,7 @@ let on_404 req : Helios.response = {
   status = 404;
   status_message = "Not found";
   content_type = "text/html";
-  body = Helios.file_body "static/404.html"
+  body = Helios.file_body "example/assets/404.html"
 }
 
 let () = 
@@ -31,11 +31,10 @@ let () =
     ; content_type = "text/html"
     ; body = Helios.string_body ("<h1>Arg: " ^ arg ^ "</h1>")
     }))
-  ; ("GET", Spec ("multi/path/with/arg" @/ str @@/ End, fun arg req ->     { headers = [||]
+  ; ("GET", Spec ("multi/path/with/arg" @/ str @@/ str @@/ End, fun arg arg2 req ->     { headers = [||]
     ; status = 200
     ; status_message = "OK"
     ; content_type = "text/html"
-    ; body = Helios.string_body ("<h1>multi path with arg: " ^ arg ^ "</h1>")
+    ; body = Helios.string_body ("<h1>multi path with arg: " ^ arg ^ ", " ^ arg2 ^ "</h1>")
     }))
-
   ])

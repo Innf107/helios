@@ -1,0 +1,4 @@
+(executable
+ (public_name helios-static)
+ (name main)
+ (libraries helios))

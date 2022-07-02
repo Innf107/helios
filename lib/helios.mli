@@ -26,4 +26,14 @@ val file_body : string -> response_body
 
 val run : ?logger:Logger.logger -> ?capabilities:int -> port:int -> (request -> response) -> unit
 
-val route : fallback:(request -> response) -> (string * string * (request -> response)) list -> request -> response
+val simple_route : fallback:(request -> response) -> (string * string * (request -> response)) list -> request -> response
+
+
+type _ spec =
+  | Lit : string * 'a spec -> 'a spec
+  | Str : 'a spec -> (string -> 'a) spec
+  | End : (request -> response) spec
+
+type some_spec = Spec : 'a spec * 'a -> some_spec
+
+val route : fallback:(request -> response) -> (string * some_spec) list -> request -> response

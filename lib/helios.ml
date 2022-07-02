@@ -34,7 +34,7 @@ let write_string fd str =
 
 let string_body str = fun fd -> write_string fd str
 
-(* TODO: Write bindings for 'sendfile' instead of read and write *)
+(* TODO: Write bindings for 'sendfile' instead of streaming read / write *)
 let file_body file_path = fun sock_fd ->
   let buffer_capacity = 4096 in
   let buffer = Bytes.create buffer_capacity in
@@ -133,8 +133,9 @@ let run ?(logger = Logger.stdout) ?(capabilities = 8) ~port handler =
   logger.log ("Listening on *:" ^ string_of_int port);
 
   (* TODO: timeouts *)
-  create_threads capabilities begin fun id -> begin
-    while true do
+  create_threads capabilities begin fun id ->
+    let rec go () = 
+      try begin
       logger.log ("[" ^ string_of_int id ^ "]: Accepting new requests...");
       let connection, _ = Unix.accept sock in
       logger.log ("[" ^ string_of_int id ^ "]: Connected!");
@@ -153,15 +154,20 @@ let run ?(logger = Logger.stdout) ?(capabilities = 8) ~port handler =
           logger.log ("[" ^ string_of_int id ^ "]: EXCEPTION: " ^ Printexc.to_string err);
           send_error connection err
       end;
-      Unix.close connection
-    done
+      Unix.close connection;
+      go ()
+    end
+    with
+    | err -> logger.log ("[" ^ string_of_int id ^ "]: CRITICAL EXCEPTION: " ^ Printexc.to_string err); go ()
+    in
+    go ()
   end
-end
 
+(* TODO: Actually parse the url (including ? parameters) *)
 let split_path path = List.filter (fun x -> not (String.equal x "")) (String.split_on_char '/' path)
 
 (* TODO: Generate a more efficient decision tree ahead of time *)
-let route ~fallback spec req =
+let simple_route ~fallback spec req =
   let path_components = split_path req.path in
   let rec go spec = function
     | [] -> 
@@ -188,3 +194,38 @@ let route ~fallback spec req =
   go spec path_components
 
 
+(*
+  "GET", Lit "arg" (Str (Run (fun x -> ...)))   
+*)
+
+type _ spec =
+  | Lit : string * 'a spec -> 'a spec
+  | Str : 'a spec -> (string -> 'a) spec
+  | End : (request -> response) spec
+
+type some_spec = Spec : 'a spec * 'a -> some_spec
+
+let route ~fallback specs req =
+  let path_components = split_path req.path in
+  let specs = List.filter_map (fun (meth, spec) -> if meth = req.req_method then Some spec else None) specs in
+
+  let rec go specs = function
+    | [] ->
+      let as_empty : some_spec -> (request -> response) option = function
+      | Spec (End, cont) -> Some cont
+      | _ -> None
+      in
+      begin match List.find_map as_empty specs with
+      | None -> fallback req
+      | Some cont -> cont req
+      end
+    | (path :: path_components) ->
+      let apply_path = function 
+        | Spec ((Lit (spec_path, spec)), cont) when spec_path = path -> Some (Spec (spec, cont))
+        | Spec ((Str spec, cont)) -> Some (Spec (spec, cont path))
+        | _ -> None
+      in
+      let remaining = List.filter_map apply_path specs in
+      go remaining path_components
+  in
+  go specs path_components

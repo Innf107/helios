@@ -140,6 +140,7 @@ let run ?(logger = Logger.stdout) ?(capabilities = 8) ~port handler =
       logger.log ("[" ^ string_of_int id ^ "]: Accepting new requests...");
       let connection, _ = Unix.accept sock in
       logger.log ("[" ^ string_of_int id ^ "]: Connected!");
+      let open Parser in
       begin
       try
         let request = parse_request connection in
@@ -151,6 +152,8 @@ let run ?(logger = Logger.stdout) ?(capabilities = 8) ~port handler =
         | HttpParseError ->
           logger.log ("[" ^ string_of_int id ^ "]: HTTP PARSE ERROR");
           send_http connection 400 "Bad Request" (fun conn -> write_string conn "\n<h1>Bad Request</h1>")
+        | Parser.ConnectionTerminated ->
+          logger.log ("[" ^ string_of_int id ^ "]: CONNECTION TERMINATED")
         | err -> 
           logger.log ("[" ^ string_of_int id ^ "]: EXCEPTION: " ^ Printexc.to_string err);
           send_error connection err
@@ -242,7 +245,7 @@ let route ~fallback specs req =
   in
   go specs path_components
 
-let (@/) x s = Lit (x, s)
-let (@@/) f x = f x
+let (@@/) x s = Lit (x, s)
+let (@/) f x = f x
 
 let str : 'a spec -> (string -> 'a) spec = fun x -> Str x

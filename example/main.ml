@@ -17,21 +17,21 @@ let () =
     ; content_type = "text/html"
     ; body = Helios.string_body "<h1>Hello, World!</h1>"
     }))
-  ; ("GET", Spec ("test" @/ End, fun req -> 
+  ; ("GET", Spec ("test" @@/ End, fun req -> 
     { headers = [||]    
     ; status = 200
     ; status_message = "Awesome!"
     ; content_type = "text/html"
     ; body = Helios.string_body "<h1>Teeeest!</h1>"
     }))
-  ; ("GET", Spec ("arg" @/ str @@/ End, fun arg req -> 
+  ; ("GET", Spec ("arg" @@/ str @/ End, fun arg req -> 
     { headers = [||]
     ; status = 200
     ; status_message = "OK"
     ; content_type = "text/html"
     ; body = Helios.string_body ("<h1>Arg: " ^ arg ^ "</h1>")
     }))
-  ; ("GET", Spec ("multi/path/with/arg" @/ str @@/ str @@/ End, fun arg arg2 req ->     { headers = [||]
+  ; ("GET", Spec ("multi/path/with/arg" @@/ str @/ str @/ End, fun arg arg2 req ->     { headers = [||]
     ; status = 200
     ; status_message = "OK"
     ; content_type = "text/html"

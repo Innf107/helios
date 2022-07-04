@@ -38,8 +38,8 @@ type some_spec = Spec : 'a spec * 'a -> some_spec
 
 val route : fallback:(request -> response) -> (string * some_spec) list -> request -> response
 
-val (@/) : string -> 'a spec -> 'a spec
-val (@@/) : ('a spec -> 'b spec) -> 'a spec -> 'b spec
+val (@@/) : string -> 'a spec -> 'a spec
+val (@/) : ('a spec -> 'b spec) -> 'a spec -> 'b spec
 
 val str : 'a spec -> (string -> 'a) spec
 

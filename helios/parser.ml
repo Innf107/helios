@@ -11,6 +11,8 @@ type parser = {
   mutable buffer_size : int
 }
 
+exception ConnectionTerminated
+
 (* 4096 because... uh... why not? *)
 let buffer_capacity = 4096
 
@@ -37,7 +39,9 @@ and advance (parser : parser): unit =
     (* We have to refill the buffer *)
     parser.buffer_ix <- 0;
     parser.buffer_size <- Unix.read parser.socket parser.buffer 0 buffer_capacity;
-  end
+    if parser.buffer_size == 0 then
+      raise ConnectionTerminated
+end
 
 let parse_while (parser : parser) (accept : char -> bool): string = 
   let rec go chars =

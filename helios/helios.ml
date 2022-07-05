@@ -154,9 +154,12 @@ let run ?(logger = Logger.stdout) ?(capabilities = 8) ~port handler =
           send_http connection 400 "Bad Request" (fun conn -> write_string conn "\n<h1>Bad Request</h1>")
         | Parser.ConnectionTerminated ->
           logger.log ("[" ^ string_of_int id ^ "]: CONNECTION TERMINATED")
-        | err -> 
+        | _ as err -> 
           logger.log ("[" ^ string_of_int id ^ "]: EXCEPTION: " ^ Printexc.to_string err);
-          send_error connection err
+          try
+            send_error connection err
+          with
+            _ -> ()
       end;
       Unix.close connection;
       go ()

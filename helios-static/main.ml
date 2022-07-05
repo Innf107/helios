@@ -60,5 +60,6 @@ let rec handler : Helios.request -> Helios.response =
 
 
 let () =
+  Printexc.record_backtrace true;
   Helios.run ~port:3000 handler
 

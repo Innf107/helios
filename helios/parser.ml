@@ -38,7 +38,7 @@ and advance (parser : parser): unit =
   end else begin
     (* We have to refill the buffer *)
     parser.buffer_ix <- 0;
-    parser.buffer_size <- Unix.read parser.socket parser.buffer 0 buffer_capacity;
+    parser.buffer_size <- Schedule.read parser.socket parser.buffer 0 buffer_capacity;
     if parser.buffer_size == 0 then
       raise ConnectionTerminated
 end

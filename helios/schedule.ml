@@ -27,8 +27,12 @@ let run main =
           handle thunk
         end
         | Yield -> Some begin fun (k : (a, unit) continuation) ->
-          enqueue_task (continue k);
-          dequeue_task () ()
+          if Queue.is_empty task_queue then
+            continue k ()
+          else begin
+            enqueue_task (continue k);
+            dequeue_task () ()
+          end
         end
         | _ -> None
         end;

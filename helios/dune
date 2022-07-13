@@ -2,5 +2,4 @@
  (public_name helios)
  (name helios)
  (libraries
-  unix
-  threads))
+  unix))

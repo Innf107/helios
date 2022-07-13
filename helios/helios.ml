@@ -24,7 +24,7 @@ type response = {
 
 let write_string fd str =
   let rec go written_so_far =
-    let written = Unix.write_substring fd str written_so_far (String.length str - written_so_far) in
+    let written = Schedule.write_substring fd str written_so_far (String.length str - written_so_far) in
     if written_so_far + written < String.length str then
       go (written_so_far + written)
     else
@@ -45,7 +45,7 @@ let file_body file_path = fun sock_fd ->
     (* Stream the contents from the file to the socket *)
     let num_read = Schedule.read file_fd buffer 0 buffer_capacity in
     if num_read > 0 then begin
-      let _ = Unix.write sock_fd buffer 0 num_read in
+      let _ = Schedule.write sock_fd buffer 0 num_read in
       go ()
     end
     else
@@ -120,6 +120,12 @@ let send_error conn err =
 (* I don't really know what to set this to tbh*)
 let backlog = 1024
 
+let rec create_threads count action = 
+  match count with
+  | _ when count <= 0 -> raise (Failure "create_threads: cannot create 0 or less threads")
+  | 1 -> action 1
+  | _ -> let _ = Domain.spawn (fun () -> action count) in create_threads (count - 1) action
+
 let run ?(logger = Logger.stdout) ?(capabilities = 8) ~port handler = 
   let sock = Unix.socket ~cloexec:true Unix.PF_INET Unix.SOCK_STREAM 0 in
   Unix.setsockopt sock SO_REUSEPORT true;
@@ -127,10 +133,8 @@ let run ?(logger = Logger.stdout) ?(capabilities = 8) ~port handler =
   Unix.bind sock (Unix.ADDR_INET (Unix.inet_addr_any, port));
   Unix.listen sock backlog;
   logger.log ("Listening on *:" ^ string_of_int port);
-
   (* TODO: timeouts *)
-  Schedule.run begin fun () ->
-    let id = 0 in
+  create_threads capabilities (fun id -> Schedule.run begin fun () ->
     let rec go () =
       try begin
       logger.log ("[" ^ string_of_int id ^ "]: Accepting new requests...");
@@ -146,18 +150,24 @@ let run ?(logger = Logger.stdout) ?(capabilities = 8) ~port handler =
 
           send_response connection response
         with
-          | HttpParseError ->
+          | HttpParseError -> begin
             logger.log ("[" ^ string_of_int id ^ "]: HTTP PARSE ERROR");
-            send_http connection 400 "Bad Request" (fun conn -> write_string conn "\n<h1>Bad Request</h1>")
+            try
+              send_http connection 400 "Bad Request" (fun conn -> write_string conn "\n<h1>Bad Request</h1>")
+            with
+              err -> print_endline ("Error when sending '400: Bad Request': " ^ Printexc.to_string err)
+            end
           | Parser.ConnectionTerminated ->
             logger.log ("[" ^ string_of_int id ^ "]: CONNECTION TERMINATED")
+          | Unix.Unix_error (Unix.ECONNRESET, _, _) ->
+            logger.log ("[" ^ string_of_int id ^ "]: CONNECTION RESET")
           | _ as err -> 
             logger.log ("[" ^ string_of_int id ^ "]: EXCEPTION: " ^ Printexc.to_string err);
             try
               send_error connection err
             with
-              _ -> ()
-        end;
+              err -> print_endline ("Error when sending '500: Internal Server Error': " ^ Printexc.to_string err)
+          end;
         Unix.close connection;
       end;
       go ()
@@ -166,7 +176,7 @@ let run ?(logger = Logger.stdout) ?(capabilities = 8) ~port handler =
     | err -> logger.log ("[" ^ string_of_int id ^ "]: CRITICAL EXCEPTION: " ^ Printexc.to_string err); go ()
     in
     go ()
-  end
+  end)
 
 (* TODO: Actually parse the url (including ? parameters and url decoding) *)
 let split_path path = List.filter (fun x -> not (String.equal x "")) (String.split_on_char '/' path)

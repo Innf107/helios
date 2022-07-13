@@ -23,12 +23,12 @@ let run main =
       effc = begin fun (type a) (eff : a Effect.t) -> 
         match eff with
         | Fork thunk -> Some begin fun (k : (a, unit) continuation) -> 
-          enqueue_task (fun () -> continue k ());
+          enqueue_task (continue k);
           handle thunk
         end
         | Yield -> Some begin fun (k : (a, unit) continuation) ->
-          enqueue_task (fun () -> continue k ());
-          handle (dequeue_task ())
+          enqueue_task (continue k);
+          dequeue_task () ()
         end
         | _ -> None
         end;
@@ -53,6 +53,10 @@ let as_non_blocking : (Unix.file_descr -> 'b) -> Unix.file_descr -> 'b =
     try_f ()
 
 let read fd bytes i j = as_non_blocking (fun fd -> Unix.read fd bytes i j) fd
+
+let write fd bytes i j = as_non_blocking (fun fd -> Unix.write fd bytes i j) fd
+
+let write_substring fd str i j = as_non_blocking (fun fd -> Unix.write_substring fd str i j) fd
 
 let accept ?cloexec fd = as_non_blocking (fun fd -> Unix.accept ?cloexec fd) fd
     

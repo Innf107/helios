@@ -15,4 +15,11 @@ val as_non_blocking : (Unix.file_descr -> 'b) -> Unix.file_descr -> 'b
 *)
 val read : Unix.file_descr -> bytes -> int -> int -> int
 
+(** Marks a file descriptor as non_blocking and asynchronously write it.
+    Same as `fun bytes i j -> as_non_blocking (fun fd -> Unix.write fd bytes i j) fd`
+*)
+val write : Unix.file_descr -> bytes -> int -> int -> int
+
+val write_substring : Unix.file_descr -> string -> int -> int -> int
+
 val accept : ?cloexec:bool -> Unix.file_descr -> Unix.file_descr * Unix.sockaddr

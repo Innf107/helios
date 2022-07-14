@@ -1,9 +1,20 @@
 
 let content_type_of_path path =
   match Filename.extension path with
-  | ".css" -> "text/css"
+  (* appliction *)
   | ".js" -> "application/javascript"
+  | ".json" -> "application/json"
+  | ".xml" -> "application/xml"
+  | ".ogg" -> "application/ogg"
+  | ".pdf" -> "application/pdf"
+  | ".zip" -> "application/zip"
+  (* text *)
+  | ".css" -> "text/css"
   | ".html" -> "text/html"
+  (* image *)
+  | ".jpg" -> "image/jpeg"
+  | ".png" -> "image/png"
+  | ".gif" -> "image/gif"
   | _ -> "text/plain"
 
 type file_type = File | Dir | Nonexistant
@@ -60,6 +71,22 @@ let rec handler : Helios.request -> Helios.response =
 
 
 let () =
-  Printexc.record_backtrace true;
-  Helios.run ~port:3000 handler
+  let usage_message = "helios-static [OPTIONS]" in
+  let port = ref 3000 in
+  let no_backtrace = ref false in
+  let capabilities = ref 4 in
+  
+  let speclist = [
+      ("--port", Arg.Set_int port, "Port to run the server on. Default: 3000");
+      ("-p", Arg.Set_int port, "Alias for --port");
+      ("--capabilities", Arg.Set_int capabilities, "Number");
+      ("--no-backtrace", Arg.Set no_backtrace, "Disable exception backtraces");
+    ] in
+
+  Arg.parse speclist (fun _ -> ()) usage_message;
+
+  if not !no_backtrace then
+    Printexc.record_backtrace true;
+
+  Helios.run ~port:!port ~capabilities:!capabilities handler
 

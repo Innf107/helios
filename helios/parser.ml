@@ -56,6 +56,15 @@ let parse_while (parser : parser) (accept : char -> bool): string =
   in
   go []
 
+let parse_satisfying (parser : parser) (pred : char -> bool): unit option =
+  let char = peek parser in
+  if pred char then begin
+    advance parser;
+    Some ()
+  end
+  else
+    None
+
 let parse_exact (parser : parser) (message : string): unit option =
   let rec go ix =
     if ix >= String.length message then

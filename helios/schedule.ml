@@ -60,6 +60,13 @@ let read fd bytes i j = as_non_blocking (fun fd -> Unix.read fd bytes i j) fd
 
 let write fd bytes i j = as_non_blocking (fun fd -> Unix.write fd bytes i j) fd
 
+let rec write_all fd bytes index len =
+  let amount_written = write fd bytes index len in
+  if amount_written < len then
+    write_all fd bytes (index + amount_written) (len - amount_written)
+  else 
+    ()
+
 let write_substring fd str i j = as_non_blocking (fun fd -> Unix.write_substring fd str i j) fd
 
 let accept ?cloexec fd = as_non_blocking (fun fd -> Unix.accept ?cloexec fd) fd

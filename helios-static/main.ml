@@ -74,7 +74,7 @@ let () =
   let usage_message = "helios-static [OPTIONS]" in
   let port = ref 3000 in
   let no_backtrace = ref false in
-  let capabilities = ref 4 in
+  let capabilities = ref (-1) in
   
   let speclist = [
       ("--port", Arg.Set_int port, "Port to run the server on. Default: 3000");
@@ -88,5 +88,5 @@ let () =
   if not !no_backtrace then
     Printexc.record_backtrace true;
 
-  Helios.run ~port:!port ~capabilities:!capabilities handler
+  Helios.run ~port:!port ?capabilities:(if !capabilities == (-1) then None else Some(!capabilities)) handler
 

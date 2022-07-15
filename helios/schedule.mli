@@ -20,6 +20,10 @@ val read : Unix.file_descr -> bytes -> int -> int -> int
 *)
 val write : Unix.file_descr -> bytes -> int -> int -> int
 
+(** Same as `write`, but continues writing if it cannot write everything immediately
+*)
+val write_all : Unix.file_descr -> bytes -> int -> int -> unit
+
 val write_substring : Unix.file_descr -> string -> int -> int -> int
 
 val accept : ?cloexec:bool -> Unix.file_descr -> Unix.file_descr * Unix.sockaddr

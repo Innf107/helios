@@ -127,7 +127,11 @@ let rec create_threads count action =
   | 1 -> action 1
   | _ -> let _ = Domain.spawn (fun () -> action count) in create_threads (count - 1) action
 
+exception SigPipe
+
 let run ?(logger = Logger.stdout) ?(capabilities = 1) ~port handler = 
+  let _ = Sys.signal Sys.sigpipe (Signal_handle (fun _ -> print_endline "BROKEN PIPE"; raise SigPipe)) in
+
   let sock = Unix.socket ~cloexec:true Unix.PF_INET Unix.SOCK_STREAM 0 in
   Unix.setsockopt sock SO_REUSEPORT true;
   Unix.bind sock (Unix.ADDR_INET (Unix.inet_addr_any, port));
